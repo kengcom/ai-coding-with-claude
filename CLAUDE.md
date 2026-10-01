@@ -31,11 +31,17 @@ npm run dev                                # tsx watch, http://localhost:3000 (�
 - เวลาเก็บเป็น UTC แสดงผลผ่าน `toBangkokIso()` ใน `src/time.ts` (+07:00)
 - ความลึกและระดับน้ำเป็น**จำนวนเต็มหน่วยเซนติเมตร**
 - คำตอบ `2xx` ทุกตัวต้องมี `notice: NOTICE` คำตอบ error ไม่ต้องมี
+- ฟีเจอร์รายงานใช้แบบเดียวกับ `now`: ของที่มีสถานะ (`ReportStore` ต่อไปจะมี `Limiter`) ส่งเข้ามาทาง `Context` และ**ไม่บังคับ** test เดิมที่ส่งแค่ `{ now }` จึงยังผ่าน · `GET` ที่ไม่มี store ได้ `reports` ว่าง · `POST` ที่ไม่มี store ได้ `500`
+- `src/reports.ts` เป็น logic ล้วน (ตรวจ input · `visibleReports` กรองหมดอายุ เรียง ตัดตามเพดาน) ไม่แตะ `Context`
+- `reportJson` ใน `src/app.ts` เป็นที่เดียวที่แปลงรายงานเป็น JSON ใช้ทั้ง `POST` และ `GET` ดึงทีละช่อง ช่องภายใน (`receivedAt`) จึงไม่หลุด
+- `tests/reports.test.ts` ดัก `console.*` ทั้งไฟล์ (ห้าม log) และ helper `call()` ตรวจว่าทุกคำตอบไม่มี IP ทดสอบ — test ใหม่ควรเรียกผ่าน `call()`
 
 ## เอกสารที่ต้องอ่านก่อนทำฟีเจอร์รายงานน้ำท่วม
 
-- `docs/intent/flood-reports.md` — ทำไม ตัดสินอะไรไปแล้ว ข้อห้าม และ Open questions
+- `docs/intent/flood-reports-2569-10-01.md` — intent ฉบับที่ใช้อยู่: ทำไม ตัดสินอะไรไปแล้ว ข้อห้าม และ Open questions (ฉบับเดิม `flood-reports.md` เก็บไว้เทียบเท่านั้น ตัวเลขในนั้นล้าสมัย)
 - `docs/specs/flood-reports.md` — requirement `RPT-REQ-001`–`017` ค่าคงที่ (ต้อง `export const` ในไฟล์ที่ระบุไว้ ห้ามเขียนตัวเลขซ้ำที่อื่น) ลำดับการทำงานของ `POST /reports` และ**รายการไฟล์ที่แตะได้แบบปิด** กับไฟล์ที่ตั้งใจไม่แก้
+- `GLOSSARY.md` — ศัพท์โดเมน โดยเฉพาะ **depth** (จากรายงาน) ≠ **level** (จากสถานี) ห้ามใช้สลับกัน
+- `docs/plans/flood-reports.md` — ลำดับขั้น TDD และความคืบหน้า (ติ๊ก `[x]`) · หนึ่งขั้น = หนึ่ง commit
 - `.claude/skills/security-baseline/SKILL.md` — กฎ `SEC-01`–`SEC-14` อ้างด้วยรหัส ถ้าทำตามข้อไหนไม่ได้ต้องเขียนเหตุผลลง spec แล้วถามก่อน
 
 ## ข้อห้ามที่พลาดง่าย
@@ -44,12 +50,13 @@ npm run dev                                # tsx watch, http://localhost:3000 (�
 - ห้ามแก้ test เดิม (`tests/app.test.ts` `tests/time.test.ts`) ให้ผ่าน · พฤติกรรมเดิมของ `GET /districts` และ `GET /districts/:id` ต้องคงเดิม เพิ่มได้แค่ key `reports`
 - ห้ามแก้ `data/stations.json` และห้ามปนรายงานจากประชาชนกับข้อมูลสถานี (`SEC-13`) · รายชื่อ 12 เขตใน `src/districts.ts` คงเดิม
 - ห้ามเพิ่ม dependency ที่ใช้ตอนรัน ใช้แค่สิ่งที่มากับ Node 22 (`SEC-02`)
-- IP ใช้ได้แค่ในตัวจำกัดจำนวนคำขอในหน่วยความจำ ห้ามลงข้อมูลหลัก API log หรือข้อความ error (`SEC-10`) · log มีได้แค่ method, path, status, เวลาที่ใช้ (`SEC-11`)
+- IP ใช้ได้ 2 อย่าง คือนับโควตา และจับว่าคนเดิมส่งจุดเดิมซ้ำ ทั้งคู่อยู่ในหน่วยความจำของตัวจำกัดเท่านั้น ห้ามลงข้อมูลหลัก API log หรือข้อความ error (`SEC-10`) · log มีได้แค่ method, path, status, เวลาที่ใช้ (`SEC-11`)
 
 ## อื่นๆ
 
 - `.agents/` `.aider-desk/` และ `skills-lock.json` เป็นชุดสกิลของเครื่องมือ AI อื่นที่ติดตั้งไว้ ไม่ใช่โค้ดของแอป
 - Branch อ้างอิง: `main` จุดเริ่มคลาส · `class-demo` ผลลัพธ์ครบ มี tag `cp1-intent` ถึง `cp8-hooks` ไว้เทียบ (ดูตารางใน `README.md`)
+- branch นี้ทำตาม intent ฉบับ 1 ต.ค. 2569 จึงต่างจาก `class-demo`: ไม่มี `severity` · ใช้ `seenAt` ไม่ใช่ `observedAt` · `reports` ไม่จัดกลุ่ม — อย่าก๊อปจาก tag `cp5`–`cp6` ตรงๆ
 
 ## Agent skills
 
