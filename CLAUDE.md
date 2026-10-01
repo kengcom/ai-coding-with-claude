@@ -50,3 +50,17 @@ npm run dev                                # tsx watch, http://localhost:3000 (�
 
 - `.agents/` `.aider-desk/` และ `skills-lock.json` เป็นชุดสกิลของเครื่องมือ AI อื่นที่ติดตั้งไว้ ไม่ใช่โค้ดของแอป
 - Branch อ้างอิง: `main` จุดเริ่มคลาส · `class-demo` ผลลัพธ์ครบ มี tag `cp1-intent` ถึง `cp8-hooks` ไว้เทียบ (ดูตารางใน `README.md`)
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as markdown files under `.scratch/<feature>/` in this repo (no remote tracker). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default labels (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`), recorded as a `Status:` line in each issue file. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root (created lazily as terms and decisions are resolved). See `docs/agents/domain.md`.
