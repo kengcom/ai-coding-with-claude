@@ -1,218 +1,174 @@
 # Plan: รายงานจุดน้ำท่วม (tracer bullet ก่อน แล้วค่อยเติมกติกา)
 
-> ที่มา: `docs/specs/flood-reports.md` (ร่างที่ 2) · กฎความปลอดภัย: `.claude/skills/security-baseline/SKILL.md`
-> ตกลงแผนวันที่ 30 ก.ย. 2569 · ติ๊ก `[x]` เมื่อ test ของข้อนั้นผ่านแล้ว · ข้อที่ยังไม่ commit มีหมายเหตุบอกไว้
+> ที่มา: `docs/specs/flood-reports.md` **ร่างที่ 3** (`cc24e79`) · intent: `docs/intent/flood-reports-2569-10-01.md` · กฎความปลอดภัย: `.claude/skills/security-baseline/SKILL.md`
+> แผนฉบับแรก 30 ก.ย. 2569 · เขียนใหม่ 1 ต.ค. 2569 ให้ตรงร่างที่ 3 · ติ๊ก `[x]` เมื่อ test ของข้อนั้นผ่านแล้ว
 
 ## Context
 
 ทำเส้นทางที่บางที่สุดให้วิ่งครบทุกชั้นก่อน คือ API (`handle()`) → logic (`src/reports.ts`) → store (`src/store.ts`) → test
-แล้วค่อยเติมกติกาหลัก ได้แก่ ตรวจข้อมูล · เวลาและการหมดอายุ · โควตา · จำกัดขนาด body
-ส่วนที่เหลืออยู่ใต้หัวข้อ **Later**
+แล้วค่อยเติมกติกาหลัก ได้แก่ จำกัดขนาด body · ตรวจข้อมูล · เวลา · โควตา · ส่วนที่เหลืออยู่ใต้หัวข้อ **Later**
 
-"DB" ในรอบนี้คือ store ในหน่วยความจำ (`createMemoryStore`) เพราะการเก็บถาวรอยู่ใน Out of scope ของ spec
-
-ไฟล์ที่แตะทั้งหมดอยู่ใน "ไฟล์ที่แตะได้ (รายการปิด)" ของ spec
-**ไฟล์ที่ไม่แตะ:** `data/stations.json` · `src/districts.ts` · `src/stations.ts` · `src/time.ts` · `tests/app.test.ts` · `tests/time.test.ts` · `package.json` · `package-lock.json` · `README.md`
-
-ของเดิมที่ใช้ซ้ำ:
-- `toBangkokIso` (`src/time.ts`)
-- `districts` (`src/districts.ts`)
-- `NOTICE` และ `Context` (`src/app.ts`)
-- `randomUUID` (`node:crypto`) และ `isIP` (`node:net`)
+"DB" ในงานนี้คือ store ในหน่วยความจำ (`createMemoryStore`) เพราะการเก็บถาวรอยู่ใน Out of scope ของ spec
 
 กติกาการทำงาน:
 - TDD: เขียน test ให้ตกก่อน แล้วค่อยเขียนโค้ดให้ผ่าน
 - หนึ่งขั้น = หนึ่ง commit · ทุก commit ต้องขอยืนยันพร้อมแสดง diff
+- จบทุกขั้น: `npm test` ผ่านทั้งหมด · `npm run lint` exit 0 · `git diff main -- tests/app.test.ts tests/time.test.ts package.json data/` ว่าง
 - ทำบน branch `feat/flood-reports`
 
-## ยึด intent ใหม่ (1 ต.ค. 2569)
+ไฟล์ที่แตะทั้งหมดอยู่ใน "ไฟล์ที่แตะได้ (รายการปิด)" ของ spec
+**ไฟล์ที่ไม่แตะ:** `data/stations.json` · `src/districts.ts` · `src/stations.ts` · `src/time.ts` · `tests/app.test.ts` · `tests/time.test.ts` · `package.json` · `package-lock.json` · `README.md`
 
-ตั้งแต่ขั้น 1b เป็นต้นไป **`docs/intent/flood-reports-2569-10-01.md` ทับ spec ในข้อที่ขัดกัน** · ข้อที่ intent ไม่ได้พูดถึง (NFC · client key · `readBody` ฯลฯ) ยังใช้ตาม spec
-`docs/specs/flood-reports.md` ยังไม่ได้แก้ตาม — ตารางนี้คือของที่ใช้จริงจนกว่าจะแก้ spec
+### ของที่เกิน spec ร่างที่ 3 (มาจากรีวิว spec 1 ต.ค. 2569)
 
-| เรื่อง | spec ร่างที่ 2 | ใช้ตาม intent ใหม่ |
-|---|---|---|
-| ชื่อเวลาที่เห็น | `observedAt` | `seenAt` |
-| `REPORT_TTL_MS` | 3 ชั่วโมง | 6 ชั่วโมง |
-| `severity` / `severityOf` / `SEVERITY_*` | มี | ไม่มี |
-| คำตอบ `POST` | 9 ช่อง รวม `receivedAt` `expiresAt` | `{ id, landmark, depthCm, seenAt, verified }` |
-| `reports` ใน `GET /districts/:id` | `{ verified, label, points }` จัดกลุ่มตาม landmark key | array แบน ไม่จัดกลุ่ม (intent Open question 9) · ไม่เกิน `MAX_REPORTS_SHOWN` = 20 ใหม่สุดตาม `seenAt` |
-| `LANDMARK_MAX` | 100 | 120 + ห้าม URL |
-| `DEPTH_MAX_CM` | 200 | 300 |
-| `seenAt` ไม่มี timezone | ไม่ระบุ | `400` |
-| `BODY_LIMIT_BYTES` | 10,240 | 2,048 |
+ทำตามข้อเหล่านี้ไปก่อน แล้วค่อยแก้ spec ตามให้ตรงกันใน commit แยก
 
-## ขั้น 0: เตรียม
+| รหัสรีวิว | เรื่อง | อยู่ขั้น |
+| --------- | ------ | -------- |
+| A1 | นับไบต์จริงเสมอ `content-length` เป็นแค่ทางลัดปฏิเสธเร็ว ไม่ใช่ตัวเชื่อ | 4 |
+| D1 | แยกตัวจัดการคำขอ HTTP ออกจาก `listen()` เพื่อให้ test `413` ได้ (`SEC-14`) — วางไว้ใน `src/request.ts` ที่อยู่ในรายการปิดอยู่แล้ว | 5 |
+| A2 | ตรวจ URL บน `landmarkKey(s)` (ลบ zero-width แล้ว) ไม่ใช่บนค่าหลัง `trim()` | 7 |
+| A3 | `ReportStore.inDistrict` คืนตามลำดับที่ `add` · `visibleReports` อาศัยลำดับนี้ตอนเวลาเท่ากัน | 8 |
 
-- [x] รัน `npm install` แล้วรัน `npm test` และ `npm run lint` · ผลที่ได้: 8/8 ผ่าน · `tsc` exit 0
-- [x] `npm install` แก้ `package-lock.json` (ลบบรรทัด `libc`) → คืนไฟล์จาก git แล้ว
-- [x] commit สกิลที่ staged ค้างไว้แยกออกไป → `a6d6b1a`
-- [x] commit `CLAUDE.md` แยกออกไป → `08fcf3e`
+## ทำแล้ว
 
-## ขั้น 1: Tracer ฝั่งเขียน · `POST /reports` ที่ body ถูกต้องได้ `201`
+- [x] ขั้น 0 เตรียม: `npm install` · แยก commit สกิลและ `CLAUDE.md` → `a6d6b1a` `08fcf3e`
+- [x] ขั้น 1 tracer ฝั่งเขียน: `POST /reports` ได้ `201` (ยังเชื่อ body ทั้งก้อน) → `e8c348e`
+- [x] ขั้น 1b ปรับ tracer ตาม intent ใหม่: `seenAt` · 6 ชม. · ตัด `severity` · คำตอบมีแค่ช่องสาธารณะ → `b174998`
+- [x] ขั้น 2 tracer ฝั่งอ่าน: `GET /districts/:id` มี `reports` · `visibleReports` กรองหมดอายุ เรียง ตัด 20 → `9450197`
 
-- [x] Test RPT-REQ-001: ได้ `201` มี `notice` มีครบ 9 ช่อง `id` เป็น UUID v4 · เวลาเป็น `19:30` / `19:30` / `22:30 +07:00` · `severity` = `"moderate"`
-- [x] Test: ไม่มี store ได้ `500 reports not configured`
-- [x] Test RPT-REQ-007: ความลึก 1 / 19 / 20 / 49 / 50 / 200
-- [x] Test RPT-REQ-015 (ส่วนแรก): `vi.spyOn` ดัก `console.*` ทั้งไฟล์ · คำตอบไม่มี `203.0.113.7` และไม่มี `::/64`
-- [x] `src/reports.ts` ใหม่: type · `severityOf` · `SEVERITY_*` · `REPORT_TTL_MS` · `parseReportInput` แบบบางที่สุด
-- [x] `src/store.ts` ใหม่: `createMemoryStore` มีแค่ `add` กับ `inDistrict`
-- [x] `src/app.ts`: เพิ่ม `reports?` ใน `Context` · route `POST /reports` · `reportJson` ดึงข้อมูลทีละช่อง
-- [x] commit → `e8c348e`
+ตอนนี้: 18 test ผ่าน · `seenAt` ยังเป็น `now` เสมอ · ยังไม่ตรวจ body · `src/server.ts` ยังไม่สร้าง store จึงยิงผ่าน `npm run dev` แล้วได้ `500`
 
-## ขั้น 1b: ปรับ tracer ให้ตรง intent ใหม่
+## คืนนี้: 7 ขั้น
 
-- [x] Test RPT-REQ-001: คำตอบ `201` มีแค่ `{ id, landmark, depthCm, seenAt, verified }` · `seenAt` = `19:30 +07:00`
-- [x] `src/reports.ts`: `observedAt` → `seenAt` · `REPORT_TTL_MS` = 6 ชม. · ลบ `severityOf` `SEVERITY_*` `expiresAt`
-- [x] `src/app.ts`: `reportJson` ส่งแค่ช่องสาธารณะ ไม่ส่ง `receivedAt`
+### ขั้น 3: `reports` เป็น object ที่มีป้าย (ปิด tracer ฝั่งอ่านตามร่างที่ 3)
+
+- **ไฟล์:** `src/reports.ts` · `src/app.ts` · `tests/reports.test.ts`
+- **test ก่อน:**
+  - [ ] RPT-REQ-009: `reports` = `{ verified: false, label: "รายงานจากประชาชน ยังไม่ยืนยัน", items }` ทั้งเขตที่มีและไม่มีรายงาน และตอนไม่ส่ง store
+  - [ ] RPT-REQ-001 ส่วนท้าย: item ใน `reports.items` `toEqual` กับ `report` ที่ได้จาก `POST`
+  - [ ] ปรับ test ขั้น 2 จาก `reports` เป็น `reports.items` (test ใหม่ของเรา ไม่ใช่ test เดิม)
+- **โค้ด:**
+  - [ ] `src/reports.ts`: `REPORTS_LABEL`
+  - [ ] `src/app.ts`: ห่อ items เป็น `{ verified, label, items }`
 - [ ] commit
 
-## ขั้น 2: Tracer ฝั่งอ่าน · `GET /districts/:id` เห็นรายงาน
+### ขั้น 4: อ่าน body แบบจำกัดขนาด (logic ล้วน ยังไม่ต่อ server)
 
-- [x] Test RPT-REQ-001 ส่วนท้าย: `POST` แล้ว `GET` ต้องเห็นรายงาน
-- [x] Test: เขตที่ไม่มีรายงาน และไม่ส่ง `reports` ใน ctx ได้ `reports` = `[]`
-- [x] Test: `stations` ต้อง `toEqual` กับตอนที่ยังไม่มีรายงาน · รายงานเขตอื่นไม่โผล่
-- [x] Test: แต่ละรายงานมีแค่ `{ id, landmark, depthCm, seenAt, verified }`
-- [x] Test: ที่ `seenAt` + 6 ชม. − 1 วิ ยังเห็น แต่ที่ + 6 ชม. ไม่เห็น · `GET` ก่อน `receivedAt` ไม่เห็น
-- [x] Test: ส่ง 21 รายงาน เห็น 20 อันใหม่สุด เรียง `seenAt` ใหม่ไปเก่า
-- [x] `src/reports.ts`: `visibleReports` · `MAX_REPORTS_SHOWN`
-- [x] `src/app.ts`: เพิ่ม `reports` ใน `GET /districts/:id` ผ่าน `reportJson` ตัวเดียวกับ `POST`
+- **ไฟล์:** `src/request.ts` (ใหม่) · `tests/request.test.ts` (ใหม่)
+- **test ก่อน** (ใช้ `Readable` ปลอมที่บันทึกการเรียก `pause()`):
+  - [ ] RPT-REQ-014: 2,048 ไบต์ได้ `ok` · 2,049 ได้ `too-large` · 3 chunk ละ 1,200 ได้ `too-large` และ `pause()` ถูกเรียก และไม่รับ chunk ที่ 3 · `content-length: 20000` คืนทันที · `น` ถูกตัดคร่อม chunk ได้ข้อความถูก · body ที่ landmark 120 ตัวได้ `ok`
+  - [ ] **A1**: `content-length: 10` แต่ส่งจริง 3,000 ไบต์ ได้ `too-large`
+  - [ ] RPT-REQ-014: `parseJsonBody("")` · `("{bad")` · `("[1]")` ได้ `undefined` · `INVALID_JSON` · `[1]`
+- **โค้ด:**
+  - [ ] `readBody` (ใช้ `pause()` ห้าม `destroy()` · `Buffer.concat` ก่อน decode · นับไบต์จริงเสมอ)
+  - [ ] `parseJsonBody` · `INVALID_JSON` · `BODY_LIMIT_BYTES`
 - [ ] commit
 
-## ขั้น 3: ต่อเข้า server จริง (จบขั้นนี้ tracer ครบทุกชั้น)
+### ขั้น 5: ต่อเข้า server จริง (จบขั้นนี้ tracer ครบทุกชั้น)
 
-- [ ] `src/server.ts`: สร้าง `createMemoryStore()` หนึ่งตัวตอนเริ่ม server แล้วส่งไปใน `ctx`
-- [ ] ตรวจด้วยมือ:
-  - `npm run dev` แล้ว `curl -X POST localhost:3000/reports -d '{"districtId":"lat-phrao","landmark":"x","depthCm":30}'` ต้องได้ `"verified":false`
-  - `curl localhost:3000/districts/lat-phrao` ต้องเห็นรายงานใน `"reports"`
+- **ไฟล์:** `src/request.ts` · `src/server.ts` · `src/app.ts` · `tests/request.test.ts` · `tests/reports.test.ts`
+- **test ก่อน:**
+  - [ ] **D1** / RPT-REQ-014: `handleRequest` กับคำขอเกิน 2 KB ได้ `413` `{ "error": "payload too large" }` · header `connection: close` · handler ที่ส่งเข้าไปไม่ถูกเรียก
+  - [ ] RPT-REQ-017: body เป็น `INVALID_JSON` ที่ `GET /districts` ได้ `400` `{ "error": "invalid JSON" }`
+  - [ ] `handleRequest` ส่ง `now` และ store ตัวเดียวกันทุกคำขอ: `POST` แล้ว `GET` ผ่าน `handleRequest` เห็นรายงาน
+- **โค้ด:**
+  - [ ] `src/request.ts`: `handleRequest(req, res, deps)` = `readBody` → `parseJsonBody` → `handle()` → เขียนคำตอบ
+  - [ ] `src/server.ts`: เหลือแค่สร้าง store หนึ่งตัว แล้ว `createServer((req, res) => handleRequest(...)).listen()` · ไม่เพิ่ม log ต่อคำขอ
+  - [ ] `src/app.ts`: ถ้าได้ `INVALID_JSON` ที่ route อื่นตอบ `400 invalid JSON`
+- **ตรวจด้วยมือ** (Git Bash · ยิงแค่ `localhost`):
+  - [ ] `curl -s -X POST localhost:3000/reports -d '{"districtId":"lat-phrao","landmark":"x","depthCm":30}'` มี `"verified":false`
+  - [ ] `curl -s localhost:3000/districts/lat-phrao` มี `"label":"รายงานจากประชาชน ยังไม่ยืนยัน"` และ `"landmark":"x"`
+  - [ ] `head -c 20000 /dev/zero | curl -s -o /dev/null -w "%{http_code}" -X POST --data-binary @- localhost:3000/reports` พิมพ์ `413`
 - [ ] commit
 
-## ขั้น 4: ตรวจ body ทั้งก้อน เขต และความลึก
+### ขั้น 6: ตรวจ body ทั้งก้อน เขต และความลึก
 
-- [ ] Test RPT-REQ-002:
-  - `"atlantis"` · `"LAT-PHRAO"` · `" lat-phrao"` · `42` · ไม่ส่งช่องนี้ → `400`
-  - หลัง `400` แล้ว `GET` ได้ `points` = `[]`
-- [ ] Test RPT-REQ-004:
-  - 1 และ 200 → `201`
-  - `0` · `-5` · `201` · `30.5` · `"30"` · `null` · `NaN` · ไม่ส่งช่องนี้ → `400`
-- [ ] Test RPT-REQ-006:
-  - `null` · `[]` · `"x"` · `5` · `undefined` → `fields` = `["body"]`
-  - หลายช่องผิดต้องได้ครบและเรียงถูก
-  - `phone` และ `verified` ถูกทิ้ง
-  - `__proto__` จาก `JSON.parse` ไม่ทำให้ prototype เปลี่ยน
-  - body ของ `400` ไม่มีค่าที่ผู้ใช้ส่งมา
-- [ ] `src/reports.ts`: ดึงข้อมูลทีละช่อง · `DEPTH_MIN_CM` / `DEPTH_MAX_CM`
+- **ไฟล์:** `src/reports.ts` · `src/app.ts` · `tests/reports.test.ts`
+- **test ก่อน:**
+  - [ ] RPT-REQ-006: `null` · `[]` · `"x"` · `5` · `undefined` · `INVALID_JSON` ได้ `fields` = `["body"]` · หลายช่องผิดได้ครบและเรียง `districtId` `landmark` `depthCm` `seenAt` · `phone` `verified` `isVerified` ถูกทิ้ง · `__proto__` จาก `JSON.parse` ไม่เปลี่ยน prototype · body ของ `400` ไม่มีค่าที่ผู้ใช้ส่งมา
+  - [ ] RPT-REQ-002: `"atlantis"` · `"LAT-PHRAO"` · `" lat-phrao"` · `42` · ไม่ส่ง ได้ `400` · หลัง `400` แล้ว `reports.items` = `[]`
+  - [ ] RPT-REQ-004: `1` และ `300` ได้ `201` · `0` `-5` `301` `30.5` `"30"` `null` `NaN` ไม่ส่ง ได้ `400`
+- **โค้ด:**
+  - [ ] `parseReportInput` ดึงทีละช่อง ไม่ใช้ `{...body}`
+  - [ ] `DEPTH_MIN_CM` / `DEPTH_MAX_CM`
 - [ ] commit
 
-## ขั้น 5: ตรวจจุดสังเกต
+### ขั้น 7: ตรวจจุดสังเกต
 
-- [ ] Test RPT-REQ-003:
-  - ทุกค่าในรายการ รวม `"ab\n"` · `"\tab"` · zero-width
-  - `"ก".repeat(100)` ผ่าน แต่ `101` ไม่ผ่าน
-  - `"เซ็น".repeat(25)` ผ่าน แต่เติมอีก 1 ตัวไม่ผ่าน
-  - ช่องว่างหัวท้ายถูกตัดออก
-- [ ] Test RPT-REQ-010: NFC กับไม่ใช่ NFC ได้ 1 point · `"หน้า เซ็นทรัล"` ได้ 2 points
-- [ ] `src/reports.ts`: NFC → ตรวจอักขระควบคุม**ก่อน** trim → ความยาวตาม code point → `landmarkKey` ต้องไม่ว่าง · `LANDMARK_MAX`
+- **ไฟล์:** `src/reports.ts` · `tests/reports.test.ts`
+- **test ก่อน:**
+  - [ ] RPT-REQ-003: ทุกค่าในรายการปฏิเสธ รวม `"ab\n"` `"\tab"` zero-width · `"ก".repeat(120)` ผ่าน `121` ไม่ผ่าน · `"เซ็น".repeat(30)` ผ่าน เติมอีกตัวไม่ผ่าน · ช่องว่างหัวท้ายถูกตัด
+  - [ ] RPT-REQ-003 ขั้น 7: URL 6 ค่าได้ `400` · ไม่ใช่ URL 6 ค่าได้ `201`
+  - [ ] **A2**: `"bit​.ly/abc"` ได้ `400`
+  - [ ] RPT-REQ-010: ตาราง key เดียวกัน / คนละ key ทั้ง 5 แถว (เรียก `landmarkKey` และ `pointKeyOf` ตรงๆ)
+- **โค้ด:**
+  - [ ] ตรวจตามลำดับ: NFC → อักขระควบคุม**ก่อน** trim → ความยาวตาม code point → `landmarkKey` ไม่ว่าง → ไม่มี URL (บน `landmarkKey`)
+  - [ ] `LANDMARK_MAX` · `landmarkKey` · `pointKeyOf`
 - [ ] commit
 
-## ขั้น 6: `observedAt` เวลา และการหมดอายุ
+### ขั้น 8: เวลาที่เห็น การหมดอายุ และการเรียง
 
-- [ ] Test RPT-REQ-005: ทุกแถวของตาราง รวมกรณีตรงขอบพอดี และเกินขอบไป 1 วินาที
-- [ ] Test RPT-REQ-008: `expiresAt` คำนวณจากค่าหลังตัด
-- [ ] Test RPT-REQ-011:
-  - ที่ +2:59:59 ยังเห็น แต่ที่ +3:00:00 ไม่เห็น
-  - `GET` ก่อน `receivedAt` ไม่เห็น
-  - รายงานหมดอายุไป 1 จาก 2 ได้ `reportCount` = `1`
-- [ ] `src/reports.ts`:
-  - ตรวจด้วย regex · ตรวจวันที่มีจริงด้วย `Date.UTC` · ตรวจช่วง offset · ตรวจช่วง −6 ชั่วโมง / +5 นาที
-  - ตัดค่าด้วย `min(ค่าที่ส่งมา, now)`
-  - `OBSERVED_MAX_PAST_MS` · `OBSERVED_MAX_FUTURE_MS`
+- **ไฟล์:** `src/reports.ts` · `src/store.ts` · `tests/reports.test.ts`
+- **test ก่อน:**
+  - [ ] RPT-REQ-005: ทุกแถวของตาราง รวมไม่ส่ง · ตรงขอบพอดี · เกินขอบ 1 วินาที · +5 นาทีถูกตัดเป็น `now`
+  - [ ] RPT-REQ-006: body มี `receivedAt` ปลอม ยังหายตอน `seenAt` + 6 ชม. (รีวิว A5: ตรวจทางอ้อมเพราะ `receivedAt` ไม่ออก API)
+  - [ ] RPT-REQ-011: `seenAt` = `now` − 1 ชม. หายตอน `now` + 5:00:00 · `seenAt` เท่ากัน `receivedAt` ใหม่กว่าขึ้นก่อน
+  - [ ] **A3**: `seenAt` และ `receivedAt` เท่ากันทั้งคู่ อันที่ `add` ทีหลังขึ้นก่อน · `inDistrict` คืนตามลำดับ `add`
+- **โค้ด:**
+  - [ ] regex · ตรวจวันที่มีจริงด้วย `Date.UTC` · ช่วง offset · ช่วง −6 ชม. / +5 นาที
+  - [ ] ตัดด้วย `min(ค่าที่ส่งมา, now)` · `SEEN_MAX_PAST_MS` · `SEEN_MAX_FUTURE_MS` · `expiresAtOf`
+  - [ ] tie-break ใน `visibleReports` · comment ใน `ReportStore.inDistrict` ว่าคืนตามลำดับ `add`
 - [ ] commit
 
-## ขั้น 7: โควตาต่อ client key
+### ขั้น 9: โควตาต่อ client key
 
-- [ ] Test RPT-REQ-012:
-  - ทุกแถวของตาราง
-  - ส่ง 20 ครั้งที่ +5:00 แล้วยังได้ `201` ที่ +10:00
-  - JSON เสีย และ `{}` ต้องถูกนับ
-- [ ] Test RPT-REQ-013 (ส่วน `clientKeyOf`) ใน `tests/request.test.ts`: ตาราง 7 แถว
-- [ ] Test RPT-REQ-015: คำตอบ `429` ไม่มี IP และไม่มี `::/64` · ใส่ `clientKey` ใน ctx ของ test
-- [ ] `src/limiter.ts` ใหม่:
-  - `hit` · `QUOTA_MAX` · `QUOTA_WINDOW_MS`
-  - เก็บเวลาไม่เกิน 5 ค่าต่อ key
-  - คำขอที่ได้ `429` ไม่ถูกนับ
-- [ ] `src/request.ts` ใหม่: `clientKeyOf`
-- [ ] `src/app.ts`:
-  - เพิ่ม `limiter?` และ `clientKey?` ใน `Context`
-  - `hit` **ก่อน**ตรวจ body
-  - ไม่มี limiter ตอบ `500`
-- [ ] `src/server.ts`: สร้าง limiter หนึ่งตัว · ส่ง `clientKeyOf(req)`
-- [ ] commit
-
-## ขั้น 8: จำกัดขนาด body และ `INVALID_JSON`
-
-- [ ] Test RPT-REQ-014 ด้วย `Readable` ปลอม:
-  - 10,240 ไบต์ผ่าน แต่ 10,241 ไบต์ไม่ผ่าน
-  - 3 chunk: ต้องเรียก `pause` และไม่รับ chunk ที่ 3
-  - `content-length: 20000`
-  - `น` ที่ถูกตัดคร่อม chunk
-  - `parseJsonBody` 3 ค่า
-- [ ] Test RPT-REQ-017: JSON เสียที่ route อื่นได้ `400 invalid JSON`
-- [ ] Test RPT-REQ-006: `INVALID_JSON` ที่ `POST /reports` ได้ `fields` = `["body"]`
-- [ ] `src/request.ts`:
-  - `readBody` (ใช้ `pause()` ห้าม `destroy()` · ใช้ `Buffer.concat` ก่อนแล้วค่อย decode)
-  - `parseJsonBody` · `INVALID_JSON` · `BODY_LIMIT_BYTES`
-- [ ] `src/server.ts`: ใช้ `readBody` · ตอบ `413` พร้อม `connection: close` · ส่ง `INVALID_JSON` ต่อให้ `handle()`
-- [ ] `src/app.ts`: ถ้าได้ `INVALID_JSON` ที่ route อื่นตอบ `400 invalid JSON`
-- [ ] ตรวจด้วยมือ: `head -c 20000 /dev/zero | curl -s -o /dev/null -w "%{http_code}" -X POST --data-binary @- localhost:3000/reports` ต้องพิมพ์ `413`
+- **ไฟล์:** `src/limiter.ts` (ใหม่) · `src/request.ts` · `src/app.ts` · `src/server.ts` · `tests/reports.test.ts` · `tests/request.test.ts`
+- **test ก่อน:**
+  - [ ] RPT-REQ-012: ทุกแถวของตาราง รวมส่ง 20 ครั้งที่ +5:00 แล้วยังได้ `201` ที่ +10:00 · JSON เสียและ `{}` ถูกนับ · คนละ key ไม่กระทบกัน
+  - [ ] RPT-REQ-013 ส่วน `clientKeyOf` ใน `tests/request.test.ts`: ตาราง 7 แถว รวม `x-forwarded-for` ถูกเมิน
+  - [ ] RPT-REQ-015: คำตอบ `429` ไม่มี `203.0.113.7` และไม่มี `::/64`
+  - [ ] ไม่มี limiter ใน ctx ได้ `500 reports not configured`
+- **โค้ด:**
+  - [ ] `src/limiter.ts`: `createLimiter` · `hit` · `QUOTA_MAX` · `QUOTA_WINDOW_MS` · เก็บเวลาไม่เกิน 5 ค่าต่อ key · คำขอที่ได้ `429` ไม่ถูกนับ
+  - [ ] `src/request.ts`: `clientKeyOf` · `handleRequest` ส่ง `clientKey` และ limiter
+  - [ ] `src/app.ts`: `limiter?` `clientKey?` ใน `Context` · `hit` **ก่อน**ตรวจ body
+  - [ ] `src/server.ts`: สร้าง limiter หนึ่งตัว
+  - [ ] `tests/reports.test.ts`: `beforeEach` สร้าง limiter ด้วย (ไม่งั้น test เดิมของเราได้ `500` ทั้งหมด)
 - [ ] commit
 
 ## Later (ไม่ทำคืนนี้)
 
-- [ ] RPT-REQ-013 ส่วนแทนรายงานเดิม:
-  - `limiter.previous` / `limiter.remember` · `store.remove`
-  - ลำดับ 6–8 ของ `POST /reports`
-  - test ตาราง 8 แถว
-- [ ] RPT-REQ-016 เพดานหน่วยความจำ:
-  - `MAX_ACTIVE_REPORTS`
-  - `MAX_TRACKED_KEYS` แยกต่อ Map พร้อมลบ key ที่ใช้ล่าสุดนานที่สุด (LRU)
-  - test 4 แถว
-- [ ] RPT-REQ-010 ส่วนที่เหลือ:
-  - เรียง points ให้ครบ 3 ชั้น
-  - ถ้าเวลาเท่ากัน ใช้รายงานที่ถูก `add` ทีหลัง
-  - แถวคนละเขต · แถว `[B, A]`
-- [ ] RPT-REQ-015 ส่วนที่เหลือ: `Report` ต้องไม่มีช่อง PII
-- [ ] RPT-REQ-017 ตรวจปิดงาน:
-  - `grep -r rooptanjai src tests` ต้องว่าง
-  - `git diff main -- package.json tests/app.test.ts tests/time.test.ts` ต้องว่าง
+- [ ] RPT-REQ-013 ส่วนแทนรายงานเดิม: `pointKey` ใน `Report` · `limiter.previous` / `remember` · `store.remove` · ลำดับ 6–8 ของ `POST /reports` · ตาราง 9 แถว
+  - รีวิว A4: `store.remove` id ที่ไม่มีแล้วต้องไม่ทำอะไร พร้อม test
+- [ ] RPT-REQ-016 เพดานหน่วยความจำ: `MAX_ACTIVE_REPORTS` · `MAX_TRACKED_KEYS` แยกต่อ Map พร้อม LRU · test 4 แถว
+  - รีวิว A6: limiter ลืม key ตาม LRU แล้วคนเดิมส่งซ้ำจะไม่ถูกแทนที่ — เขียนลง Edge cases ว่ายอมรับ
+- [ ] RPT-REQ-015 ส่วนที่เหลือ: type `Report` ต้องไม่มีช่อง PII
+- [ ] รีวิว A9: `landmarkKey` ลบ `U+2060` และ `U+00AD` ด้วย หรือเขียนเหตุผลที่ไม่ลบ
+- [ ] แก้ spec ตามรีวิว A1–A9 และ D1–D3 ให้ตรงกับที่ทำจริง (commit แยก)
+- [ ] แก้ intent ใหม่ให้บันทึกข้อตัดสิน 1 ต.ค. (แทนที่รายงานซ้ำ · `reports` เป็น object · `seenAt` ไม่บังคับ) และใส่หมายเหตุหัว intent เดิมว่าถูกแทนแล้ว
+- [ ] RPT-REQ-017 ตรวจปิดงาน: `grep -r rooptanjai src tests` ว่าง · `git diff main -- package.json tests/app.test.ts tests/time.test.ts` ว่าง
 - [ ] รีวิวเทียบ `SEC-01`–`SEC-14` (checkpoint `cp7-review`)
 
 ## ความเสี่ยงและเรื่องที่ยังไม่แน่ใจ
 
-1. **ขั้น 3–7 `POST` เปิดแต่ยังไม่จำกัดขนาด body:** intent บอกว่าต้องจำกัดก่อนเปิดรับ `POST`
-   - ช่วงนี้ใช้แค่ `localhost` ห้ามเปิดให้เครื่องอื่นเข้า
-   - ทางเลือก: ย้ายขั้น 8 ขึ้นมาไว้ต่อจากขั้น 3
-2. **ก่อนขั้น 7 ยังไม่มี limiter:**
-   - spec บอกว่าถ้าไม่มี limiter ต้องตอบ `500` แต่ขั้น 1–6 ตรวจแค่ store แล้วค่อยเติมในขั้น 7
-   - test ที่เขียนในรอบนี้จะต้องเพิ่ม limiter เข้าไปทีหลัง (ไม่ใช่ test เดิม)
-3. **ก่อนทำ "Later" คนเดิมส่งจุดเดิมซ้ำจะนับเป็น 2 รายงาน:** ยอมรับได้ เพราะยังไม่มีใครใช้ระบบจริง
-4. **test ของ `readBody`:** ต้องปลอม stream ให้ตรวจ `pause()` ได้ และตรวจได้ว่าไม่รับ chunk ที่ 3 · จะรู้แน่ว่าทำยังไงตอนเขียนจริง
-5. **`NaN` และ `__proto__`:**
-   - `NaN` ต้องเรียก `handle()` ตรงๆ เพราะมาจาก JSON ไม่ได้
-   - `__proto__` ต้องสร้าง body ด้วย `JSON.parse` ไม่ใช่ object literal
-6. **Open questions ข้อ 1–3 ใน intent ยังไม่มีคนยืนยัน:** ใช้ค่าเริ่มต้นจาก spec และเขียนเป็น `export const` ที่เดียว
+1. **ขั้น 5–8 `POST` เปิดผ่าน server จริงแต่ยังไม่มีโควตา:** จำกัดขนาด body แล้ว (ขั้น 4–5) แต่ยิงรัวได้จนถึงขั้น 9 · ช่วงนี้ใช้แค่ `localhost` ห้ามเปิดให้เครื่องอื่นเข้า
+2. **`handleRequest` ใน `src/request.ts` (D1) เกินจากที่ spec บอกว่าไฟล์นี้มี:** ไม่ได้เพิ่มไฟล์นอกรายการปิด แต่ต้องแก้ spec ตาม (อยู่ใน Later)
+3. **test ของ `readBody` ต้องปลอม stream:** ต้องตรวจได้ว่า `pause()` ถูกเรียกและ chunk ที่ 3 ไม่ถูกรับ · จะรู้แน่ว่าทำยังไงตอนเขียนจริงในขั้น 4
+4. **ขั้น 9 จะทำให้ test ใน `tests/reports.test.ts` ทุกตัวได้ `500` ถ้าลืมเพิ่ม limiter ใน `beforeEach`:** ไม่ใช่ regression · test ตาราง 21 รายงาน (ขั้น 2) ต้องส่งจากคนละ `clientKey` ไม่งั้นติดโควตาที่ครั้งที่ 6
+5. **regex URL ของ A2 ทำงานบนค่าที่ `toLowerCase()` แล้ว:** ผลไม่ต่างเพราะ regex มี flag `i` อยู่แล้ว แต่ต้องตรวจซ้ำว่าตัวอย่าง "ไม่ใช่ URL" ทั้ง 6 ค่ายังผ่าน
+6. **Open questions ข้อ 1–2 ใน intent ใหม่ยังไม่มีคนยืนยัน (6 ชม. · 5 ครั้ง/10 นาที · 20 อัน):** ใช้ค่าตาม spec เขียนเป็น `export const` ที่เดียว
 7. **ผลลบที่ถูกต้อง ไม่ใช่บั๊ก:**
-   - `"หน้าเซ็นทรัล"` กับ `"หน้า เซ็นทรัล"` ได้ 2 points
-   - ความลึก 0 ได้ `400`
-   - คำตอบ `4xx` ไม่มี `notice`
+   - `"หน้าเซ็นทรัล"` กับ `"หน้า เซ็นทรัล"` ได้คนละ key
+   - `"Soi.Ari"` ได้ `400` (ข้อจำกัดที่ยอมรับใน spec edge case 11)
+   - ความลึก `0` ได้ `400`
+   - คำตอบ `4xx` และ `5xx` ไม่มี `notice`
+   - รายงานที่ 21 ยังอยู่ใน store แต่ไม่แสดง
 
 ## Verification
 
-- จบแต่ละขั้น:
-  - `npm test` ต้องผ่านทั้งหมด (test เดิม 8 ตัว + test ใหม่)
-  - `npm run lint` ต้องจบด้วย exit 0
-- จบขั้น 3 และขั้น 8 ให้ตรวจด้วยมือด้วย curl
-  - ยิงแค่ `localhost` เท่านั้น ห้ามยิง `flood-api.rooptanjai.com` (`SEC-01`)
+- จบแต่ละขั้น: `npm test` ผ่านทั้งหมด (test เดิม 8 ตัว + test ใหม่) · `npm run lint` exit 0
+- จบขั้น 5 ตรวจด้วยมือด้วย curl 3 คำสั่ง ยิงแค่ `localhost` เท่านั้น ห้ามยิง `flood-api.rooptanjai.com` (`SEC-01`)
 - ก่อนปิดงาน:
-  - `git diff main --stat` ต้องมีแค่ไฟล์ในรายการปิดกับ `docs/plans/flood-reports.md`
-  - `tests/app.test.ts` และ `tests/time.test.ts` ต้องไม่อยู่ใน diff
+  - `git diff main --stat` มีแค่ไฟล์ในรายการปิดของ spec กับ `docs/`
+  - `tests/app.test.ts` และ `tests/time.test.ts` ไม่อยู่ใน diff
