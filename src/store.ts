@@ -2,7 +2,7 @@ import type { Report } from "./reports.ts"
 
 export interface ReportStore {
   add(report: Report, now: Date): void
-  /** Every report still in the store; groupReports filters by time. */
+  /** Every report still in the store; visibleReports filters by time. */
   inDistrict(districtId: string): Report[]
 }
 

@@ -69,14 +69,14 @@
 
 ## ขั้น 2: Tracer ฝั่งอ่าน · `GET /districts/:id` เห็นรายงาน
 
-- [ ] Test RPT-REQ-001 ส่วนท้าย: `POST` แล้ว `GET` ต้องเห็นรายงาน
-- [ ] Test: เขตที่ไม่มีรายงาน และไม่ส่ง `reports` ใน ctx ได้ `reports` = `[]`
-- [ ] Test: `stations` ต้อง `toEqual` กับตอนที่ยังไม่มีรายงาน · รายงานเขตอื่นไม่โผล่
-- [ ] Test: แต่ละรายงานมีแค่ `{ id, landmark, depthCm, seenAt, verified }`
-- [ ] Test: ที่ `seenAt` + 6 ชม. − 1 วิ ยังเห็น แต่ที่ + 6 ชม. ไม่เห็น · `GET` ก่อน `receivedAt` ไม่เห็น
-- [ ] Test: ส่ง 21 รายงาน เห็น 20 อันใหม่สุด เรียง `seenAt` ใหม่ไปเก่า
-- [ ] `src/reports.ts`: `visibleReports` · `MAX_REPORTS_SHOWN`
-- [ ] `src/app.ts`: เพิ่ม `reports` ใน `GET /districts/:id` ผ่าน `reportJson` ตัวเดียวกับ `POST`
+- [x] Test RPT-REQ-001 ส่วนท้าย: `POST` แล้ว `GET` ต้องเห็นรายงาน
+- [x] Test: เขตที่ไม่มีรายงาน และไม่ส่ง `reports` ใน ctx ได้ `reports` = `[]`
+- [x] Test: `stations` ต้อง `toEqual` กับตอนที่ยังไม่มีรายงาน · รายงานเขตอื่นไม่โผล่
+- [x] Test: แต่ละรายงานมีแค่ `{ id, landmark, depthCm, seenAt, verified }`
+- [x] Test: ที่ `seenAt` + 6 ชม. − 1 วิ ยังเห็น แต่ที่ + 6 ชม. ไม่เห็น · `GET` ก่อน `receivedAt` ไม่เห็น
+- [x] Test: ส่ง 21 รายงาน เห็น 20 อันใหม่สุด เรียง `seenAt` ใหม่ไปเก่า
+- [x] `src/reports.ts`: `visibleReports` · `MAX_REPORTS_SHOWN`
+- [x] `src/app.ts`: เพิ่ม `reports` ใน `GET /districts/:id` ผ่าน `reportJson` ตัวเดียวกับ `POST`
 - [ ] commit
 
 ## ขั้น 3: ต่อเข้า server จริง (จบขั้นนี้ tracer ครบทุกชั้น)

@@ -51,3 +51,62 @@ describe("RPT-REQ-001: POST /reports", () => {
     expect(res).toEqual({ status: 500, body: { error: "reports not configured" } })
   })
 })
+
+type DistrictBody = { stations: unknown[]; reports: Record<string, unknown>[] }
+
+const minutes = (n: number) => new Date(now.getTime() + n * 60 * 1000)
+
+function reportsAt(districtId: string, at: Date = now): Record<string, unknown>[] {
+  const res = call("GET", `/districts/${districtId}`, undefined, at)
+  expect(res.status).toBe(200)
+  return (res.body as DistrictBody).reports
+}
+
+describe("GET /districts/:id shows reports (plan step 2)", () => {
+  it("shows a report right after it is posted", () => {
+    const posted = (call("POST", "/reports", validBody).body as { report: Record<string, unknown> }).report
+    expect(reportsAt("lat-phrao")).toEqual([posted])
+  })
+
+  it("gives an empty list for a district with no reports", () => {
+    expect(reportsAt("sai-mai")).toEqual([])
+  })
+
+  it("gives an empty list when no report store is configured", () => {
+    const res = handle("GET", "/districts/lat-phrao", undefined, { now })
+    expect((res.body as DistrictBody).reports).toEqual([])
+  })
+
+  it("leaves stations exactly as they were and keeps other districts' reports out", () => {
+    const before = (call("GET", "/districts/lat-phrao", undefined).body as DistrictBody).stations
+    call("POST", "/reports", validBody)
+    call("POST", "/reports", { ...validBody, districtId: "chatuchak" })
+    const res = call("GET", "/districts/lat-phrao", undefined).body as DistrictBody
+    expect(res.stations).toEqual(before)
+    expect(res.reports).toHaveLength(1)
+  })
+
+  it("shows only the public fields of each report", () => {
+    call("POST", "/reports", validBody)
+    expect(Object.keys(reportsAt("lat-phrao")[0] ?? {}).sort()).toEqual(["depthCm", "id", "landmark", "seenAt", "verified"])
+  })
+
+  it("hides a report 6 hours after seenAt", () => {
+    call("POST", "/reports", validBody)
+    expect(reportsAt("lat-phrao", new Date(now.getTime() + 6 * 60 * 60 * 1000 - 1000))).toHaveLength(1)
+    expect(reportsAt("lat-phrao", new Date(now.getTime() + 6 * 60 * 60 * 1000))).toEqual([])
+  })
+
+  it("does not show a report before it was received", () => {
+    call("POST", "/reports", validBody, minutes(10))
+    expect(reportsAt("lat-phrao", minutes(9))).toEqual([])
+  })
+
+  it("shows at most the 20 newest reports, newest seenAt first", () => {
+    for (let i = 0; i < 21; i++) call("POST", "/reports", { ...validBody, landmark: `จุด ${i}` }, minutes(i))
+    const shown = reportsAt("lat-phrao", minutes(21))
+    expect(shown).toHaveLength(20)
+    expect(shown[0]?.landmark).toBe("จุด 20")
+    expect(shown[19]?.landmark).toBe("จุด 1")
+  })
+})

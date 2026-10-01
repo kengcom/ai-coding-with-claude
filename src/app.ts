@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 import { districts } from "./districts.ts"
-import { parseReportInput, type Report } from "./reports.ts"
+import { parseReportInput, visibleReports, type Report } from "./reports.ts"
 import { latestReading, stationsIn } from "./stations.ts"
 import type { ReportStore } from "./store.ts"
 import { toBangkokIso } from "./time.ts"
@@ -32,7 +32,8 @@ export function handle(method: string, path: string, body: unknown, ctx: Context
         latest: latest ? { at: toBangkokIso(latest.at), levelCm: latest.levelCm } : null
       }
     })
-    return { status: 200, body: { notice: NOTICE, district, stations } }
+    const reports = visibleReports(ctx.reports?.inDistrict(district.id) ?? [], ctx.now).map(reportJson)
+    return { status: 200, body: { notice: NOTICE, district, stations, reports } }
   }
 
   if (method === "POST" && path === "/reports") return postReport(body, ctx)
