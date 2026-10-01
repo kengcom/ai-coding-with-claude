@@ -25,6 +25,23 @@
 - หนึ่งขั้น = หนึ่ง commit · ทุก commit ต้องขอยืนยันพร้อมแสดง diff
 - ทำบน branch `feat/flood-reports`
 
+## ยึด intent ใหม่ (1 ต.ค. 2569)
+
+ตั้งแต่ขั้น 1b เป็นต้นไป **`docs/intent/flood-reports-2569-10-01.md` ทับ spec ในข้อที่ขัดกัน** · ข้อที่ intent ไม่ได้พูดถึง (NFC · client key · `readBody` ฯลฯ) ยังใช้ตาม spec
+`docs/specs/flood-reports.md` ยังไม่ได้แก้ตาม — ตารางนี้คือของที่ใช้จริงจนกว่าจะแก้ spec
+
+| เรื่อง | spec ร่างที่ 2 | ใช้ตาม intent ใหม่ |
+|---|---|---|
+| ชื่อเวลาที่เห็น | `observedAt` | `seenAt` |
+| `REPORT_TTL_MS` | 3 ชั่วโมง | 6 ชั่วโมง |
+| `severity` / `severityOf` / `SEVERITY_*` | มี | ไม่มี |
+| คำตอบ `POST` | 9 ช่อง รวม `receivedAt` `expiresAt` | `{ id, landmark, depthCm, seenAt, verified }` |
+| `reports` ใน `GET /districts/:id` | `{ verified, label, points }` จัดกลุ่มตาม landmark key | array แบน ไม่จัดกลุ่ม (intent Open question 9) · ไม่เกิน `MAX_REPORTS_SHOWN` = 20 ใหม่สุดตาม `seenAt` |
+| `LANDMARK_MAX` | 100 | 120 + ห้าม URL |
+| `DEPTH_MAX_CM` | 200 | 300 |
+| `seenAt` ไม่มี timezone | ไม่ระบุ | `400` |
+| `BODY_LIMIT_BYTES` | 10,240 | 2,048 |
+
 ## ขั้น 0: เตรียม
 
 - [x] รัน `npm install` แล้วรัน `npm test` และ `npm run lint` · ผลที่ได้: 8/8 ผ่าน · `tsc` exit 0
@@ -34,8 +51,6 @@
 
 ## ขั้น 1: Tracer ฝั่งเขียน · `POST /reports` ที่ body ถูกต้องได้ `201`
 
-> test ผ่านแล้ว ยังไม่ commit
-
 - [x] Test RPT-REQ-001: ได้ `201` มี `notice` มีครบ 9 ช่อง `id` เป็น UUID v4 · เวลาเป็น `19:30` / `19:30` / `22:30 +07:00` · `severity` = `"moderate"`
 - [x] Test: ไม่มี store ได้ `500 reports not configured`
 - [x] Test RPT-REQ-007: ความลึก 1 / 19 / 20 / 49 / 50 / 200
@@ -43,19 +58,25 @@
 - [x] `src/reports.ts` ใหม่: type · `severityOf` · `SEVERITY_*` · `REPORT_TTL_MS` · `parseReportInput` แบบบางที่สุด
 - [x] `src/store.ts` ใหม่: `createMemoryStore` มีแค่ `add` กับ `inDistrict`
 - [x] `src/app.ts`: เพิ่ม `reports?` ใน `Context` · route `POST /reports` · `reportJson` ดึงข้อมูลทีละช่อง
+- [x] commit → `e8c348e`
+
+## ขั้น 1b: ปรับ tracer ให้ตรง intent ใหม่
+
+- [x] Test RPT-REQ-001: คำตอบ `201` มีแค่ `{ id, landmark, depthCm, seenAt, verified }` · `seenAt` = `19:30 +07:00`
+- [x] `src/reports.ts`: `observedAt` → `seenAt` · `REPORT_TTL_MS` = 6 ชม. · ลบ `severityOf` `SEVERITY_*` `expiresAt`
+- [x] `src/app.ts`: `reportJson` ส่งแค่ช่องสาธารณะ ไม่ส่ง `receivedAt`
 - [ ] commit
 
 ## ขั้น 2: Tracer ฝั่งอ่าน · `GET /districts/:id` เห็นรายงาน
 
 - [ ] Test RPT-REQ-001 ส่วนท้าย: `POST` แล้ว `GET` ต้องเห็นรายงาน
-- [ ] Test RPT-REQ-009:
-  - เขตที่ไม่มีรายงานได้ `points` = `[]`
-  - ไม่ส่ง `reports` ใน ctx ได้ `[]`
-  - `stations` ต้อง `toEqual` กับตอนที่ยังไม่มีรายงาน
-  - point ไม่มี `id` หรือ `landmarkKey`
-- [ ] Test RPT-REQ-010: 2 แถวแรก ("Central Ladprao" ได้ 1 point · zero-width ได้ 1 point)
-- [ ] `src/reports.ts`: `landmarkKey` (ครบ 4 ขั้น) · `pointKeyOf` · `groupReports` (กรองตาม RPT-REQ-011 · จัดกลุ่ม · latest ใช้ `observedAt` ตามด้วย `receivedAt`)
-- [ ] `src/app.ts`: เพิ่ม `reports` ที่มี `verified: false`, `label` และ `points` · เวลาผ่าน `toBangkokIso` · ไม่ส่ง `receivedAt` ออก
+- [ ] Test: เขตที่ไม่มีรายงาน และไม่ส่ง `reports` ใน ctx ได้ `reports` = `[]`
+- [ ] Test: `stations` ต้อง `toEqual` กับตอนที่ยังไม่มีรายงาน · รายงานเขตอื่นไม่โผล่
+- [ ] Test: แต่ละรายงานมีแค่ `{ id, landmark, depthCm, seenAt, verified }`
+- [ ] Test: ที่ `seenAt` + 6 ชม. − 1 วิ ยังเห็น แต่ที่ + 6 ชม. ไม่เห็น · `GET` ก่อน `receivedAt` ไม่เห็น
+- [ ] Test: ส่ง 21 รายงาน เห็น 20 อันใหม่สุด เรียง `seenAt` ใหม่ไปเก่า
+- [ ] `src/reports.ts`: `visibleReports` · `MAX_REPORTS_SHOWN`
+- [ ] `src/app.ts`: เพิ่ม `reports` ใน `GET /districts/:id` ผ่าน `reportJson` ตัวเดียวกับ `POST`
 - [ ] commit
 
 ## ขั้น 3: ต่อเข้า server จริง (จบขั้นนี้ tracer ครบทุกชั้น)
@@ -63,7 +84,7 @@
 - [ ] `src/server.ts`: สร้าง `createMemoryStore()` หนึ่งตัวตอนเริ่ม server แล้วส่งไปใน `ctx`
 - [ ] ตรวจด้วยมือ:
   - `npm run dev` แล้ว `curl -X POST localhost:3000/reports -d '{"districtId":"lat-phrao","landmark":"x","depthCm":30}'` ต้องได้ `"verified":false`
-  - `curl localhost:3000/districts/lat-phrao` ต้องเห็น `"reportCount":1`
+  - `curl localhost:3000/districts/lat-phrao` ต้องเห็นรายงานใน `"reports"`
 - [ ] commit
 
 ## ขั้น 4: ตรวจ body ทั้งก้อน เขต และความลึก

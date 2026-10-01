@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 import { districts } from "./districts.ts"
-import { parseReportInput, REPORT_TTL_MS, severityOf, type Report } from "./reports.ts"
+import { parseReportInput, type Report } from "./reports.ts"
 import { latestReading, stationsIn } from "./stations.ts"
 import type { ReportStore } from "./store.ts"
 import { toBangkokIso } from "./time.ts"
@@ -47,31 +47,18 @@ function postReport(body: unknown, ctx: Context): Response {
   const parsed = parseReportInput(body, ctx.now)
   if (!parsed.ok) return { status: 400, body: { error: "invalid report", fields: parsed.fields } }
 
-  const { districtId, landmark, depthCm, observedAt } = parsed.value
-  const report: Report = {
-    id: randomUUID(),
-    districtId,
-    landmark,
-    depthCm,
-    observedAt,
-    receivedAt: ctx.now,
-    expiresAt: new Date(observedAt.getTime() + REPORT_TTL_MS)
-  }
+  const report: Report = { id: randomUUID(), ...parsed.value, receivedAt: ctx.now }
   store.add(report, ctx.now)
   return { status: 201, body: { notice: NOTICE, report: reportJson(report) } }
 }
 
-/** Pick fields one by one so internal fields never leak into the API. */
+/** Pick fields one by one so internal fields (receivedAt) never leak into the API. */
 function reportJson(r: Report) {
   return {
     id: r.id,
-    districtId: r.districtId,
     landmark: r.landmark,
     depthCm: r.depthCm,
-    severity: severityOf(r.depthCm),
-    verified: false,
-    observedAt: toBangkokIso(r.observedAt),
-    receivedAt: toBangkokIso(r.receivedAt),
-    expiresAt: toBangkokIso(r.expiresAt)
+    seenAt: toBangkokIso(r.seenAt),
+    verified: false
   }
 }

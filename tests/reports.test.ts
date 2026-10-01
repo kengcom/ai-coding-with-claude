@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest"
 import { handle, NOTICE, type Context, type Response } from "../src/app.ts"
-import { severityOf } from "../src/reports.ts"
 import { createMemoryStore } from "../src/store.ts"
 
 const now = new Date("2026-09-30T12:30:00Z")
@@ -36,38 +35,19 @@ describe("RPT-REQ-001: POST /reports", () => {
     expect(res.status).toBe(201)
     const body = res.body as { notice: string; report: Record<string, unknown> }
     expect(body.notice).toBe(NOTICE)
-    expect(Object.keys(body.report).sort()).toEqual(
-      ["depthCm", "districtId", "expiresAt", "id", "landmark", "observedAt", "receivedAt", "severity", "verified"]
-    )
     expect(body.report.id).toMatch(UUID_V4)
+    // Intent Q7: the public shape only. receivedAt stays internal.
     expect(body.report).toEqual({
       id: body.report.id,
-      districtId: "lat-phrao",
       landmark: "หน้าเซ็นทรัลลาดพร้าว",
       depthCm: 30,
-      severity: "moderate",
-      verified: false,
-      observedAt: "2026-09-30T19:30:00+07:00",
-      receivedAt: "2026-09-30T19:30:00+07:00",
-      expiresAt: "2026-09-30T22:30:00+07:00"
+      seenAt: "2026-09-30T19:30:00+07:00",
+      verified: false
     })
   })
 
   it("answers 500 when no report store is configured", () => {
     const res = handle("POST", "/reports", validBody, { now })
     expect(res).toEqual({ status: 500, body: { error: "reports not configured" } })
-  })
-})
-
-describe("RPT-REQ-007: severityOf", () => {
-  it.each([
-    [1, "minor"],
-    [19, "minor"],
-    [20, "moderate"],
-    [49, "moderate"],
-    [50, "severe"],
-    [200, "severe"]
-  ])("%i cm is %s", (depthCm, severity) => {
-    expect(severityOf(depthCm)).toBe(severity)
   })
 })
