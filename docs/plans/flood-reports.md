@@ -36,6 +36,8 @@
 
 **ถอยโค้ดออก 1 ต.ค. 2569:** โค้ด tracer ที่เคยทำ (`e8c348e` `b174998` `9450197` และขั้นป้ายที่ branch `backup/step3`) ถูกเอาออกตามที่ KENGCOM สั่งให้เหลือแค่แผน · ดูโค้ดเดิมได้จากประวัติ git · ตอนนี้ `src/` และ `tests/` เหมือน `main` · 8 test เดิมผ่าน
 
+**ทำนอกลำดับ 1 ต.ค. 2569:** KENGCOM สั่งให้เขียน test เรื่องรวมรายงานซ้ำและการหมดอายุก่อน (`tests/reports.test.ts` 11 test) จึงได้โค้ดของขั้น 1–2 ครบ และบางส่วนของขั้น 7 กับ RPT-REQ-013 ใน Later · ติ๊กเฉพาะบรรทัดโค้ดที่ test ครอบจริง · บรรทัด test ของขั้น 1–2 ยังไม่ติ๊ก เพราะ test ที่บรรทัดนั้นระบุยังไม่ได้เขียน · test ที่มีแล้ว: RPT-REQ-011 (+5:59:59 / +6:00:00 · นับจาก `seenAt`) · RPT-REQ-013 แถว 1 2 3 4 7 8 · `parseReportInput` อ่าน `seenAt` แล้วแต่ยังไม่ตรวจช่วงเวลา
+
 ## คืนนี้: 8 ขั้น
 
 ### ขั้น 1: tracer ฝั่งเขียน · `POST /reports` ที่ body ถูกต้องได้ `201`
@@ -46,9 +48,9 @@
   - [ ] ไม่มี store ใน ctx ได้ `500 reports not configured`
   - [ ] RPT-REQ-015 (ส่วนแรก): `vi.spyOn` ดัก `console.*` ทั้งไฟล์ · helper `call()` ตรวจว่าทุกคำตอบไม่มี `203.0.113.7` และไม่มี `::/64`
 - **โค้ด:**
-  - [ ] `src/reports.ts`: type `Report` (ไม่มีช่อง PII) · `parseReportInput` แบบบางที่สุด (ยังเชื่อ body · `seenAt` = `now`) · `REPORT_TTL_MS`
-  - [ ] `src/store.ts`: `ReportStore` · `createMemoryStore` มีแค่ `add` กับ `inDistrict`
-  - [ ] `src/app.ts`: `reports?` ใน `Context` · route `POST /reports` · `reportJson` ดึงข้อมูลทีละช่อง
+  - [x] `src/reports.ts`: type `Report` (ไม่มีช่อง PII) · `parseReportInput` แบบบางที่สุด (ยังเชื่อ body · `seenAt` = `now`) · `REPORT_TTL_MS`
+  - [x] `src/store.ts`: `ReportStore` · `createMemoryStore` มีแค่ `add` กับ `inDistrict`
+  - [x] `src/app.ts`: `reports?` ใน `Context` · route `POST /reports` · `reportJson` ดึงข้อมูลทีละช่อง
 - [ ] commit
 
 ### ขั้น 2: tracer ฝั่งอ่าน · `GET /districts/:id` เห็นรายงานใต้ป้าย "ยังไม่ยืนยัน"
@@ -60,8 +62,8 @@
   - [ ] RPT-REQ-009: `stations` `toEqual` กับตอนที่ยังไม่มีรายงาน · รายงานเขตอื่นไม่โผล่ · item มีแค่ช่องสาธารณะ
   - [ ] RPT-REQ-011: ที่ `now` + 5:59:59 ยังเห็น · ที่ + 6:00:00 ไม่เห็น · `GET` ก่อน `receivedAt` ไม่เห็น · ส่ง 21 รายงานเห็น 20 อันใหม่สุด เรียง `seenAt` ใหม่ไปเก่า
 - **โค้ด:**
-  - [ ] `src/reports.ts`: `REPORTS_LABEL` · `MAX_REPORTS_SHOWN` · `visibleReports`
-  - [ ] `src/app.ts`: `reports` = `{ verified, label, items }` ผ่าน `reportJson` ตัวเดียวกับ `POST`
+  - [x] `src/reports.ts`: `REPORTS_LABEL` · `MAX_REPORTS_SHOWN` · `visibleReports`
+  - [x] `src/app.ts`: `reports` = `{ verified, label, items }` ผ่าน `reportJson` ตัวเดียวกับ `POST`
 - [ ] commit
 
 ### ขั้น 3: อ่าน body แบบจำกัดขนาด (logic ล้วน ยังไม่ต่อ server)
