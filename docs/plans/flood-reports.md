@@ -42,14 +42,14 @@
 
 - **ไฟล์:** `src/reports.ts` (ใหม่) · `src/store.ts` (ใหม่) · `src/app.ts` · `tests/reports.test.ts` (ใหม่)
 - **test ก่อน:**
-  - [ ] RPT-REQ-001: ได้ `201` มี `notice` · `report` มีแค่ `{ id, landmark, depthCm, seenAt, verified }` · `id` เป็น UUID v4 · `seenAt` = `"2026-09-30T19:30:00+07:00"` · ไม่มี `districtId` `receivedAt` `expiresAt` `severity`
-  - [ ] ไม่มี store ใน ctx ได้ `500 reports not configured`
-  - [ ] RPT-REQ-015 (ส่วนแรก): `vi.spyOn` ดัก `console.*` ทั้งไฟล์ · helper `call()` ตรวจว่าทุกคำตอบไม่มี `203.0.113.7` และไม่มี `::/64`
+  - [x] RPT-REQ-001: ได้ `201` มี `notice` · `report` มีแค่ `{ id, landmark, depthCm, seenAt, verified }` · `id` เป็น UUID v4 · `seenAt` = `"2026-09-30T19:30:00+07:00"` · ไม่มี `districtId` `receivedAt` `expiresAt` `severity`
+  - [x] ไม่มี store ใน ctx ได้ `500 reports not configured`
+  - [x] RPT-REQ-015 (ส่วนแรก): `vi.spyOn` ดัก `console.*` ทั้งไฟล์ · helper `call()` ตรวจว่าทุกคำตอบไม่มี `203.0.113.7` และไม่มี `::/64`
 - **โค้ด:**
-  - [ ] `src/reports.ts`: type `Report` (ไม่มีช่อง PII) · `parseReportInput` แบบบางที่สุด (ยังเชื่อ body · `seenAt` = `now`) · `REPORT_TTL_MS`
-  - [ ] `src/store.ts`: `ReportStore` · `createMemoryStore` มีแค่ `add` กับ `inDistrict`
-  - [ ] `src/app.ts`: `reports?` ใน `Context` · route `POST /reports` · `reportJson` ดึงข้อมูลทีละช่อง
-- [ ] commit
+  - [x] `src/reports.ts`: type `Report` (ไม่มีช่อง PII) · `parseReportInput` แบบบางที่สุด (ยังเชื่อ body · `seenAt` = `now`) · `REPORT_TTL_MS`
+  - [x] `src/store.ts`: `ReportStore` · `createMemoryStore` มีแค่ `add` กับ `inDistrict`
+  - [x] `src/app.ts`: `reports?` ใน `Context` · route `POST /reports` · `reportJson` ดึงข้อมูลทีละช่อง
+- [x] commit
 
 ### ขั้น 2: tracer ฝั่งอ่าน · `GET /districts/:id` เห็นรายงานใต้ป้าย "ยังไม่ยืนยัน"
 
