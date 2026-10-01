@@ -25,35 +25,46 @@
 
 | รหัสรีวิว | เรื่อง | อยู่ขั้น |
 | --------- | ------ | -------- |
-| A1 | นับไบต์จริงเสมอ `content-length` เป็นแค่ทางลัดปฏิเสธเร็ว ไม่ใช่ตัวเชื่อ | 4 |
-| D1 | แยกตัวจัดการคำขอ HTTP ออกจาก `listen()` เพื่อให้ test `413` ได้ (`SEC-14`) — วางไว้ใน `src/request.ts` ที่อยู่ในรายการปิดอยู่แล้ว | 5 |
-| A2 | ตรวจ URL บน `landmarkKey(s)` (ลบ zero-width แล้ว) ไม่ใช่บนค่าหลัง `trim()` | 7 |
-| A3 | `ReportStore.inDistrict` คืนตามลำดับที่ `add` · `visibleReports` อาศัยลำดับนี้ตอนเวลาเท่ากัน | 8 |
+| A1 | นับไบต์จริงเสมอ `content-length` เป็นแค่ทางลัดปฏิเสธเร็ว ไม่ใช่ตัวเชื่อ | 3 |
+| D1 | แยกตัวจัดการคำขอ HTTP ออกจาก `listen()` เพื่อให้ test `413` ได้ (`SEC-14`) — วางไว้ใน `src/request.ts` ที่อยู่ในรายการปิดอยู่แล้ว | 4 |
+| A2 | ตรวจ URL บน `landmarkKey(s)` (ลบ zero-width แล้ว) ไม่ใช่บนค่าหลัง `trim()` | 6 |
+| A3 | `ReportStore.inDistrict` คืนตามลำดับที่ `add` · `visibleReports` อาศัยลำดับนี้ตอนเวลาเท่ากัน | 7 |
 
 ## ทำแล้ว
 
 - [x] ขั้น 0 เตรียม: `npm install` · แยก commit สกิลและ `CLAUDE.md` → `a6d6b1a` `08fcf3e`
-- [x] ขั้น 1 tracer ฝั่งเขียน: `POST /reports` ได้ `201` (ยังเชื่อ body ทั้งก้อน) → `e8c348e`
-- [x] ขั้น 1b ปรับ tracer ตาม intent ใหม่: `seenAt` · 6 ชม. · ตัด `severity` · คำตอบมีแค่ช่องสาธารณะ → `b174998`
-- [x] ขั้น 2 tracer ฝั่งอ่าน: `GET /districts/:id` มี `reports` · `visibleReports` กรองหมดอายุ เรียง ตัด 20 → `9450197`
 
-ตอนนี้: 18 test ผ่าน · `seenAt` ยังเป็น `now` เสมอ · ยังไม่ตรวจ body · `src/server.ts` ยังไม่สร้าง store จึงยิงผ่าน `npm run dev` แล้วได้ `500`
+**ถอยโค้ดออก 1 ต.ค. 2569:** โค้ด tracer ที่เคยทำ (`e8c348e` `b174998` `9450197` และขั้นป้ายที่ branch `backup/step3`) ถูกเอาออกตามที่ KENGCOM สั่งให้เหลือแค่แผน · ดูโค้ดเดิมได้จากประวัติ git · ตอนนี้ `src/` และ `tests/` เหมือน `main` · 8 test เดิมผ่าน
 
-## คืนนี้: 7 ขั้น
+## คืนนี้: 8 ขั้น
 
-### ขั้น 3: `reports` เป็น object ที่มีป้าย (ปิด tracer ฝั่งอ่านตามร่างที่ 3)
+### ขั้น 1: tracer ฝั่งเขียน · `POST /reports` ที่ body ถูกต้องได้ `201`
+
+- **ไฟล์:** `src/reports.ts` (ใหม่) · `src/store.ts` (ใหม่) · `src/app.ts` · `tests/reports.test.ts` (ใหม่)
+- **test ก่อน:**
+  - [ ] RPT-REQ-001: ได้ `201` มี `notice` · `report` มีแค่ `{ id, landmark, depthCm, seenAt, verified }` · `id` เป็น UUID v4 · `seenAt` = `"2026-09-30T19:30:00+07:00"` · ไม่มี `districtId` `receivedAt` `expiresAt` `severity`
+  - [ ] ไม่มี store ใน ctx ได้ `500 reports not configured`
+  - [ ] RPT-REQ-015 (ส่วนแรก): `vi.spyOn` ดัก `console.*` ทั้งไฟล์ · helper `call()` ตรวจว่าทุกคำตอบไม่มี `203.0.113.7` และไม่มี `::/64`
+- **โค้ด:**
+  - [ ] `src/reports.ts`: type `Report` (ไม่มีช่อง PII) · `parseReportInput` แบบบางที่สุด (ยังเชื่อ body · `seenAt` = `now`) · `REPORT_TTL_MS`
+  - [ ] `src/store.ts`: `ReportStore` · `createMemoryStore` มีแค่ `add` กับ `inDistrict`
+  - [ ] `src/app.ts`: `reports?` ใน `Context` · route `POST /reports` · `reportJson` ดึงข้อมูลทีละช่อง
+- [ ] commit
+
+### ขั้น 2: tracer ฝั่งอ่าน · `GET /districts/:id` เห็นรายงานใต้ป้าย "ยังไม่ยืนยัน"
 
 - **ไฟล์:** `src/reports.ts` · `src/app.ts` · `tests/reports.test.ts`
 - **test ก่อน:**
   - [ ] RPT-REQ-009: `reports` = `{ verified: false, label: "รายงานจากประชาชน ยังไม่ยืนยัน", items }` ทั้งเขตที่มีและไม่มีรายงาน และตอนไม่ส่ง store
   - [ ] RPT-REQ-001 ส่วนท้าย: item ใน `reports.items` `toEqual` กับ `report` ที่ได้จาก `POST`
-  - [ ] ปรับ test ขั้น 2 จาก `reports` เป็น `reports.items` (test ใหม่ของเรา ไม่ใช่ test เดิม)
+  - [ ] RPT-REQ-009: `stations` `toEqual` กับตอนที่ยังไม่มีรายงาน · รายงานเขตอื่นไม่โผล่ · item มีแค่ช่องสาธารณะ
+  - [ ] RPT-REQ-011: ที่ `now` + 5:59:59 ยังเห็น · ที่ + 6:00:00 ไม่เห็น · `GET` ก่อน `receivedAt` ไม่เห็น · ส่ง 21 รายงานเห็น 20 อันใหม่สุด เรียง `seenAt` ใหม่ไปเก่า
 - **โค้ด:**
-  - [ ] `src/reports.ts`: `REPORTS_LABEL`
-  - [ ] `src/app.ts`: ห่อ items เป็น `{ verified, label, items }`
+  - [ ] `src/reports.ts`: `REPORTS_LABEL` · `MAX_REPORTS_SHOWN` · `visibleReports`
+  - [ ] `src/app.ts`: `reports` = `{ verified, label, items }` ผ่าน `reportJson` ตัวเดียวกับ `POST`
 - [ ] commit
 
-### ขั้น 4: อ่าน body แบบจำกัดขนาด (logic ล้วน ยังไม่ต่อ server)
+### ขั้น 3: อ่าน body แบบจำกัดขนาด (logic ล้วน ยังไม่ต่อ server)
 
 - **ไฟล์:** `src/request.ts` (ใหม่) · `tests/request.test.ts` (ใหม่)
 - **test ก่อน** (ใช้ `Readable` ปลอมที่บันทึกการเรียก `pause()`):
@@ -65,7 +76,7 @@
   - [ ] `parseJsonBody` · `INVALID_JSON` · `BODY_LIMIT_BYTES`
 - [ ] commit
 
-### ขั้น 5: ต่อเข้า server จริง (จบขั้นนี้ tracer ครบทุกชั้น)
+### ขั้น 4: ต่อเข้า server จริง (จบขั้นนี้ tracer ครบทุกชั้น)
 
 - **ไฟล์:** `src/request.ts` · `src/server.ts` · `src/app.ts` · `tests/request.test.ts` · `tests/reports.test.ts`
 - **test ก่อน:**
@@ -82,7 +93,7 @@
   - [ ] `head -c 20000 /dev/zero | curl -s -o /dev/null -w "%{http_code}" -X POST --data-binary @- localhost:3000/reports` พิมพ์ `413`
 - [ ] commit
 
-### ขั้น 6: ตรวจ body ทั้งก้อน เขต และความลึก
+### ขั้น 5: ตรวจ body ทั้งก้อน เขต และความลึก
 
 - **ไฟล์:** `src/reports.ts` · `src/app.ts` · `tests/reports.test.ts`
 - **test ก่อน:**
@@ -94,7 +105,7 @@
   - [ ] `DEPTH_MIN_CM` / `DEPTH_MAX_CM`
 - [ ] commit
 
-### ขั้น 7: ตรวจจุดสังเกต
+### ขั้น 6: ตรวจจุดสังเกต
 
 - **ไฟล์:** `src/reports.ts` · `tests/reports.test.ts`
 - **test ก่อน:**
@@ -107,7 +118,7 @@
   - [ ] `LANDMARK_MAX` · `landmarkKey` · `pointKeyOf`
 - [ ] commit
 
-### ขั้น 8: เวลาที่เห็น การหมดอายุ และการเรียง
+### ขั้น 7: เวลาที่เห็น การหมดอายุ และการเรียง
 
 - **ไฟล์:** `src/reports.ts` · `src/store.ts` · `tests/reports.test.ts`
 - **test ก่อน:**
@@ -121,7 +132,7 @@
   - [ ] tie-break ใน `visibleReports` · comment ใน `ReportStore.inDistrict` ว่าคืนตามลำดับ `add`
 - [ ] commit
 
-### ขั้น 9: โควตาต่อ client key
+### ขั้น 8: โควตาต่อ client key
 
 - **ไฟล์:** `src/limiter.ts` (ใหม่) · `src/request.ts` · `src/app.ts` · `src/server.ts` · `tests/reports.test.ts` · `tests/request.test.ts`
 - **test ก่อน:**
@@ -152,10 +163,10 @@
 
 ## ความเสี่ยงและเรื่องที่ยังไม่แน่ใจ
 
-1. **ขั้น 5–8 `POST` เปิดผ่าน server จริงแต่ยังไม่มีโควตา:** จำกัดขนาด body แล้ว (ขั้น 4–5) แต่ยิงรัวได้จนถึงขั้น 9 · ช่วงนี้ใช้แค่ `localhost` ห้ามเปิดให้เครื่องอื่นเข้า
+1. **ขั้น 4–7 `POST` เปิดผ่าน server จริงแต่ยังไม่มีโควตา:** จำกัดขนาด body แล้ว (ขั้น 3–4) แต่ยิงรัวได้จนถึงขั้น 8 · ช่วงนี้ใช้แค่ `localhost` ห้ามเปิดให้เครื่องอื่นเข้า
 2. **`handleRequest` ใน `src/request.ts` (D1) เกินจากที่ spec บอกว่าไฟล์นี้มี:** ไม่ได้เพิ่มไฟล์นอกรายการปิด แต่ต้องแก้ spec ตาม (อยู่ใน Later)
-3. **test ของ `readBody` ต้องปลอม stream:** ต้องตรวจได้ว่า `pause()` ถูกเรียกและ chunk ที่ 3 ไม่ถูกรับ · จะรู้แน่ว่าทำยังไงตอนเขียนจริงในขั้น 4
-4. **ขั้น 9 จะทำให้ test ใน `tests/reports.test.ts` ทุกตัวได้ `500` ถ้าลืมเพิ่ม limiter ใน `beforeEach`:** ไม่ใช่ regression · test ตาราง 21 รายงาน (ขั้น 2) ต้องส่งจากคนละ `clientKey` ไม่งั้นติดโควตาที่ครั้งที่ 6
+3. **test ของ `readBody` ต้องปลอม stream:** ต้องตรวจได้ว่า `pause()` ถูกเรียกและ chunk ที่ 3 ไม่ถูกรับ · จะรู้แน่ว่าทำยังไงตอนเขียนจริงในขั้น 3
+4. **ขั้น 8 จะทำให้ test ใน `tests/reports.test.ts` ทุกตัวได้ `500` ถ้าลืมเพิ่ม limiter ใน `beforeEach`:** ไม่ใช่ regression · test ตาราง 21 รายงาน (ขั้น 2) ต้องส่งจากคนละ `clientKey` ไม่งั้นติดโควตาที่ครั้งที่ 6
 5. **regex URL ของ A2 ทำงานบนค่าที่ `toLowerCase()` แล้ว:** ผลไม่ต่างเพราะ regex มี flag `i` อยู่แล้ว แต่ต้องตรวจซ้ำว่าตัวอย่าง "ไม่ใช่ URL" ทั้ง 6 ค่ายังผ่าน
 6. **Open questions ข้อ 1–2 ใน intent ใหม่ยังไม่มีคนยืนยัน (6 ชม. · 5 ครั้ง/10 นาที · 20 อัน):** ใช้ค่าตาม spec เขียนเป็น `export const` ที่เดียว
 7. **ผลลบที่ถูกต้อง ไม่ใช่บั๊ก:**
@@ -168,7 +179,7 @@
 ## Verification
 
 - จบแต่ละขั้น: `npm test` ผ่านทั้งหมด (test เดิม 8 ตัว + test ใหม่) · `npm run lint` exit 0
-- จบขั้น 5 ตรวจด้วยมือด้วย curl 3 คำสั่ง ยิงแค่ `localhost` เท่านั้น ห้ามยิง `flood-api.rooptanjai.com` (`SEC-01`)
+- จบขั้น 4 ตรวจด้วยมือด้วย curl 3 คำสั่ง ยิงแค่ `localhost` เท่านั้น ห้ามยิง `flood-api.rooptanjai.com` (`SEC-01`)
 - ก่อนปิดงาน:
   - `git diff main --stat` มีแค่ไฟล์ในรายการปิดของ spec กับ `docs/`
   - `tests/app.test.ts` และ `tests/time.test.ts` ไม่อยู่ใน diff
